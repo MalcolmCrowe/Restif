@@ -4,16 +4,6 @@ import sys
 import ast
 import base64
 class RestifHandler(BaseHTTPRequestHandler):
-    def Connect(self,db):
-        usr = 'admin'
-        pwd = 'apwd'
-        h = self.headers['Authorization']
-        if h is not None:
-            d = str(base64.b64decode(h[6:len(h)]),'utf-8') # 6 is len('Basic ')
-            s = d.split(':')
-            usr = s[0]
-            pwd = s[1]
-        return mysql.connector.connect(user=usr,password=pwd,database=db)
     def Send(self,status,mess):
         self.send_response(status)
         self.send_header("Cache-control", "no-store");
@@ -24,6 +14,53 @@ class RestifHandler(BaseHTTPRequestHandler):
             self.send_header('Content-Length',len(bs))
             self.end_headers()
             self.wfile.write(bs) 
+        return
+    ## WWW-authentication override
+    def handle_one_request(self):
+        try:
+            self.raw_requestline = self.rfile.readline(65537)
+            if len(self.raw_requestline) > 65536:
+                self.requestline = ''
+                self.request_version = ''
+                self.command = ''
+                self.send_error(414)
+                return
+            if not self.raw_requestline:
+                self.close_connection = True
+                return
+            if not self.parse_request():
+                # An error code has been sent, just exit
+                return
+            # code for our override
+            h = self.headers["Authorization"]
+            if h is None:
+              self.send_error401()
+              return
+            d = str(base64.b64decode(h[6:len(h)]),'utf-8') # 6 is len('Basic ')
+            s = d.split(':')
+            self.usr = s[0]
+            self.pwd = s[1]
+            # end of our special code
+            mname = 'do_' + self.command
+            if not hasattr(self, mname):
+                self.send_error(
+                    501,
+                    "Unsupported method (%r)" % self.command)
+                return
+            method = getattr(self, mname)
+            method()
+            self.wfile.flush() #actually send the response if not already done.
+        except socket.timeout as e:
+            #a read or a write timed out.  Discard this connection
+            self.log_error("Request timed out: %r", e)
+            self.close_connection = True
+            return
+    def send_error401(self):
+        self.send_response(401, None)
+        self.send_header('Connection', 'close')
+        self.send_header("WWW-Authenticate",'Basic realm="MySQL login"')
+        body = None
+        self.end_headers()
         return
     def do_GET(self):
         try:
@@ -37,7 +74,8 @@ class RestifHandler(BaseHTTPRequestHandler):
                 tb = segments[2]
             if len(segments)>3:
                 wh = segments[3]
-            conn = self.Connect(db)
+            conn = None
+            conn = mysql.connector.connect(user=self.usr,password=self.pwd,database=db)
             if conn is None:
                 self.Send(400,'Cannot connect')
                 return
@@ -72,9 +110,17 @@ class RestifHandler(BaseHTTPRequestHandler):
         desc = cursor._description
         acc = self.headers['Accept']
         fmts = { 'text/plain':['','\n','','',',',''], # array start mid end; obj start mid end
-                'application/json':['[',',\n',']','{',', ','}']}
+                'application/json':['[',',\n',']','{',', ','}'],
+                'application/xml':['<root>','','</root>','<'+tb+'>','','</'+tb+'>'],
+                'text/html':['','','</table>','<tr>','','</tr>']
+                }
         fmt = fmts[acc]
         mess = []
+        if acc=='text/html':
+            mess.append('<table border><tr>')
+            for hd in desc:
+                mess.append('<th>'+hd[0]+'</th>')
+            mess.append('</tr>') 
         mess.append(fmt[0]) # array start
         rsep = ''     # row separator initially empty
         for rw in rows:
@@ -91,10 +137,15 @@ class RestifHandler(BaseHTTPRequestHandler):
         mess.append(fmt[2]) # array end
         return ''.join(mess)
     def Field(self,acc,desc,data,i):
+        if acc=='text/html':
+            return '<td>'+str(data[i])+'</td>'
         v = self.Value(desc[i][1],str(data[i]))
         if acc=='text/plain':
             return v
-        return '"' + desc[i][0] +'": ' + v
+        if acc=='application/json':
+            return '"' + desc[i][0] +'": ' + v
+
+        return '<'+desc[i][0]+'>'+v+'</'+desc[i][0]+'>' #xml
     def Value(self,typ,val):
         q = ""
         if typ in {253,254,252,10,7,11}: # char, varchar, text, date, timestamp, time
@@ -119,7 +170,8 @@ class RestifHandler(BaseHTTPRequestHandler):
         if data is None:
             self.Send(400,'Nothing to do')
             return
-        conn = self.Connect(db)
+        conn = None
+        conn = mysql.connector.connect(user=self.usr,password=self.pwd,database=db)
         if conn is None:
             self.Send(400,'Cannot connect')
             return
@@ -175,7 +227,8 @@ class RestifHandler(BaseHTTPRequestHandler):
         if data is None:
             self.Send(400,'Nothing to do')
             return
-        conn = self.Connect(db)
+        conn = None
+        conn = mysql.connector.connect(user=self.usr,password=self.pwd,database=db)
         if conn is None:
             self.Send(400,'Cannot connect')
             return
@@ -208,7 +261,8 @@ class RestifHandler(BaseHTTPRequestHandler):
             tb = segments[2]
         if len(segments)>>3:
             wh = segments[3]
-        conn = self.Connect(db)
+        conn = None
+        conn = mysql.connector.connect(user=self.usr,password=self.pwd,database=db)
         if conn is None:
             self.Send(400,'Cannot connect')
             return

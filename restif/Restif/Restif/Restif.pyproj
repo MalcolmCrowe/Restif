@@ -12,6 +12,7 @@
     <OutputPath>.</OutputPath>
     <Name>Restif</Name>
     <RootNamespace>Restif</RootNamespace>
+    <InterpreterId>Global|PythonCore|3.5</InterpreterId>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugSymbols>true</DebugSymbols>
@@ -23,6 +24,9 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Restif.py" />
+  </ItemGroup>
+  <ItemGroup>
+    <InterpreterReference Include="Global|PythonCore|3.5" />
   </ItemGroup>
   <PropertyGroup>
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>

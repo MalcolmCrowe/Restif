@@ -103,23 +103,47 @@ namespace RestifD
             if (wh != null)
                 cmd.CommandText += " where " + wh;
             var rdr = cmd.ExecuteReader();
+             var acc = context.Request.Headers["Accept"];
             //  0: fieldstart 1: fieldend 2: liststart 3: listmid 4: listend 
-            //  5: rowstart 6: rowmid 7: rowend                
-            var fmt = new string[] { "","=","", "\n", "", "", ",", ";" };
-            if (context.Request.Headers["Accept"] == "application/json")
-                fmt = new string[] { "\"", "\": ", "[", ",\n", "]", "{", ", ", "}" };
+            //  5: rowstart 6: rowmid 7: rowend  
+            var fmt = new string[] { "", "=", "", "\n", "", "", ",", ";" };
+
+            switch (acc)
+            {
+                case "application/json":
+                    fmt = new string[] { "\"", "\": ", "[", ",\n", "]", "{", ", ", "}" };
+                    break;
+                case "text/html":
+                    fmt = new string[] { "", "", "</tr>", "", "</table>", "<tr>","", "</tr>" };
+                    break;
+                case "application/xml":
+                    fmt = new string[] { "<", ">", "<root>", "", "</root>", "<" + tb + ">", "", "</" + tb + ">" };
+                    break;
+            }
             var r = new StringBuilder(fmt[2]);
+            var pos = 0;
             var m = "";
             while (rdr.Read())
             {
+                if (acc=="text/html" && pos++ ==0) // generate headers row
+                {
+                    r.Append("<table border><tr>");
+                    for (var i = 0; i < rdr.VisibleFieldCount; i++)
+                        r.Append("<th>" + rdr.GetName(i) + "</th>");
+                }
                 var c = "";
                 r.Append(m);
                 m = fmt[3];
                 r.Append(fmt[5]);
                 for (var i = 0; i < rdr.VisibleFieldCount; i++)
                 {
-                    var sv = rdr[i].ToString();
-                    r.Append(c+ fmt[0]+ rdr.GetName(i)+fmt[1]+ Format(rdr[i]));
+                    var fn = rdr.GetName(i); // tag or field name
+                    if (acc == "text/html") // html headers have already been done
+                        r.Append("<td>"+rdr[i].ToString()+"</td>");
+                    else
+                        r.Append(c + fmt[0] + fn  + fmt[1] +Format(rdr[i]));
+                    if (acc == "application/xml") // xml need end tags
+                        r.Append("</" + fn + ">");
                     c = fmt[6];
                 }
                 r.Append(fmt[7]);

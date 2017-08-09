@@ -29,7 +29,7 @@ namespace RESTClient
                 case "Json": return "application/json";
                 case "String": return "text/plain";
             }
-            return "text/xml";
+            return "application/xml";
         }
 
         void FormatResponse(Stream s)
@@ -228,6 +228,5 @@ namespace RESTClient
             webBrowser1.Visible = false;
             textBox2.Visible = true;
         }
-
     }
 }
