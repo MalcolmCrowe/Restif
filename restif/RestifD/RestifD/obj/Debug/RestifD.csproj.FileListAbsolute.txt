@@ -1,8 +1,0 @@
-C:\restif\RestifD\RestifD\bin\Debug\RestifD.exe.config
-C:\restif\RestifD\RestifD\bin\Debug\RestifD.exe
-C:\restif\RestifD\RestifD\bin\Debug\RestifD.pdb
-C:\restif\RestifD\RestifD\bin\Debug\MySql.Data.dll
-C:\restif\RestifD\RestifD\bin\Debug\MySql.Data.xml
-C:\restif\RestifD\RestifD\obj\Debug\RestifD.csprojResolveAssemblyReference.cache
-C:\restif\RestifD\RestifD\obj\Debug\RestifD.exe
-C:\restif\RestifD\RestifD\obj\Debug\RestifD.pdb
