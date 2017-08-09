@@ -1,9 +1,0 @@
-C:\restif\RESTClient\RESTClient\bin\Debug\RESTClient.exe.config
-C:\restif\RESTClient\RESTClient\bin\Debug\RESTClient.exe
-C:\restif\RESTClient\RESTClient\bin\Debug\RESTClient.pdb
-C:\restif\RESTClient\RESTClient\obj\Debug\RESTClient.csprojResolveAssemblyReference.cache
-C:\restif\RESTClient\RESTClient\obj\Debug\RESTClient.ClientForm.resources
-C:\restif\RESTClient\RESTClient\obj\Debug\RESTClient.Properties.Resources.resources
-C:\restif\RESTClient\RESTClient\obj\Debug\RESTClient.csproj.GenerateResource.Cache
-C:\restif\RESTClient\RESTClient\obj\Debug\RESTClient.exe
-C:\restif\RESTClient\RESTClient\obj\Debug\RESTClient.pdb
