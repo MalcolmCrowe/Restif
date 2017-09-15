@@ -1,11 +1,15 @@
 from http.server import * 
+from io import *
 import mysql.connector
 import sys
 import ast
+import datetime
 import base64
 class RestifHandler(BaseHTTPRequestHandler):
     def Send(self,status,mess):
         self.send_response(status)
+        if self.origin is not None:
+            self.send_header("Access-Control-Allow-Origin",self.origin)
         self.send_header("Cache-control", "no-store");
         self.send_header("Expires", "-1");
         self.send_header("Pragma", "no-cache");
@@ -32,6 +36,7 @@ class RestifHandler(BaseHTTPRequestHandler):
                 # An error code has been sent, just exit
                 return
             # code for our override
+            self.origin = self.headers["Origin"]
             h = self.headers["Authorization"]
             if h is None:
               self.send_error401()
@@ -62,6 +67,18 @@ class RestifHandler(BaseHTTPRequestHandler):
         body = None
         self.end_headers()
         return
+    def do_OPTIONS(self):
+        h = self.headers["Access-Control-Request-Headers"]
+        self.send_response(200, None)
+        self.send_header('Connection', 'close')
+        self.send_header("WWW-Authenticate",'Basic realm="MySQL login"')
+        self.send_header("Access-Control-Allow-Headers",h)
+        self.send_header("Access-Control-Allow-Origin",self.origin)
+        self.send_header("Access-Control-Allow-Methods","GET, POST, PUT, DELETE, OPTIONS")
+        self.send_header("Access-Control-Max-Age","86400")
+        body = None
+        self.end_headers()
+        return
     def do_GET(self):
         try:
             segments = self.path.split('/') 
@@ -75,14 +92,19 @@ class RestifHandler(BaseHTTPRequestHandler):
             if len(segments)>3:
                 wh = segments[3]
             conn = None
-            conn = mysql.connector.connect(user=self.usr,password=self.pwd,database=db)
-            if conn is None:
-                self.Send(400,'Cannot connect')
-                return
-            if tb==None:
-                mess = self.Get1(conn,db)
+            page = db is not None and (db.endswith('.htm') or db.endswith('.js'))
+            if page:
+                mess = open(db,'rb',0).readall().decode('utf-8')
             else:
-                mess = self.Get2(conn,tb,wh)
+                conn = mysql.connector.connect(user=self.usr,password=self.pwd,
+                                               database=db)
+                if conn is None:
+                    self.Send(400,'Cannot connect')
+                    return
+                if tb==None:
+                    mess = self.Get1(conn,db)
+                else:
+                    mess = self.Get2(conn,tb,wh)
             self.Send(200,mess)
         except Exception as e:
             self.Send(403,e.msg)
@@ -112,7 +134,8 @@ class RestifHandler(BaseHTTPRequestHandler):
         fmts = { 'text/plain':['','\n','','',',',''], # array start mid end; obj start mid end
                 'application/json':['[',',\n',']','{',', ','}'],
                 'application/xml':['<root>','','</root>','<'+tb+'>','','</'+tb+'>'],
-                'text/html':['','','</table>','<tr>','','</tr>']
+                'text/html':['','','</table>','<tr>','','</tr>'],
+                '*/*': ['','\n','','',',','']
                 }
         fmt = fmts[acc]
         mess = []
@@ -147,10 +170,9 @@ class RestifHandler(BaseHTTPRequestHandler):
 
         return '<'+desc[i][0]+'>'+v+'</'+desc[i][0]+'>' #xml
     def Value(self,typ,val):
-        q = ""
-        if typ in {253,254,252,10,7,11}: # char, varchar, text, date, timestamp, time
-            q = "'" # single quote because Sql option uses text/plain too
-        return q+val+q
+        if typ in {253,254,252,10,7,11}: # char, varchar, text. date, timestamp, time
+            return "'" + val.replace("'","''") +"'" # single quote because Sql option uses text/plain too
+        return val
     def log_request(code,size):
         return
     def GetData(self):
