@@ -1,0 +1,38 @@
+<html>
+<head>
+    <script>
+        list = '<table><tr><th>Start</th><th>End</th><th>Approved</th></tr></table>';
+        replies = '';
+        function search()
+        {
+            var holidaysDIV = document.getElementById('holidays');
+            var empidTXT = document.getElementById('empid');
+            var xhttp = new XMLHttpRequest();
+            xhttp.withCredentials = true;
+            xhttp.onreadystatechange = function(x) {
+                if (this.readyState == 4 && this.status == 200)
+                    document.getElementById('holidays').innerHTML = this.responseText;
+            };
+            xhttp.open("GET", "http://localhost:8088/payroll/holiday/empid=" + empidTXT.value)
+            xhhtp.setHeader("Accept","text.html")
+            xhttp.send()
+            holidaysDIV.innerHTML = list; 
+        }
+        function book()
+        { }
+    </script>
+</head>
+<body>
+<p>Employee number: <input id="empid" type="text" /> 
+    <input type="button" value="Search" onclick="search()"></p>
+<p>Holiday list</p>
+    <div id="holidays">
+    </div>
+<p>Book a new holiday:</p>
+    <p>Start: <input id="start" type="text"/> </p>
+    <p>End: <input id="end" type="text" /></p>
+    <input type="button" value="Submit" onlick="book()" /></p>
+</body>
+</html>
+
+
