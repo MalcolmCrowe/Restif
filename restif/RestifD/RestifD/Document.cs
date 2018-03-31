@@ -11,7 +11,6 @@ namespace RestifD
     /// There are methods using reflection to create a Document representing
     /// any CLI object of a known type, 
     /// and for extracting objects from a Document given a path of fieldnames.
-    /// There are also methods for binary serialisation using BSON.
     /// See also DocArray,
     /// </summary>
     public class Document : DocBase
@@ -118,9 +117,9 @@ namespace RestifD
                 sb.Append("null");
             else if (v is string)
             {
-                sb.Append('"');
+                sb.Append('\'');
                 sb.Append(v);
-                sb.Append('"');
+                sb.Append('\'');
             }
             else if (v is IEnumerable)
             {
@@ -135,7 +134,7 @@ namespace RestifD
                     else if (a is DocArray)
                         sb.Append(((DocArray)a).ToString());
                     else if (a is DateTime)
-                        sb.Append("'" + ((DateTime)a).ToString("yyyy-MM-dd") + "'");
+                        sb.Append((((DateTime)a).Ticks*1.0D/TimeSpan.TicksPerSecond).ToString());
                     else if (a is string)
                         sb.Append("'" + a + "'");
                     else
@@ -164,6 +163,19 @@ namespace RestifD
         internal static int GetLength(byte[] b, int off)
         {
             return b[off] + (b[off + 1] << 8) + (b[off + 2] << 16) + (b[off + 3] << 24);
+        }
+
+        internal static void Format(Document e, StringBuilder cls, StringBuilder vls)
+        {
+            var comma = "";
+            foreach (var f in e.fields)
+            {
+                cls?.Append(comma);
+                vls.Append(comma);
+                comma = ", ";
+                cls?.Append(f.Key);
+                Field(f.Value, vls);
+            }
         }
     }
     public class DocArray : DocBase

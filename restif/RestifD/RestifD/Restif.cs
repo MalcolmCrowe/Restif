@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Text;
 using System.Net;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using MySql.Data.MySqlClient;
 using System.IO;
@@ -77,7 +78,7 @@ namespace RestifD
                         case "POST":
                             var pd = Receive();
                             if (tb != null)
-                                mess = Post2(tb, new Document(pd));
+                                mess = Post2(tb, new DocArray(pd));
                             else if (db != null)
                                 mess = Post1(pd);
                             else
@@ -98,6 +99,7 @@ namespace RestifD
                 } catch (Exception e)
                 {
                     Send(403, e.Message);
+                     Console.WriteLine("--> "+e.Message);
                 }
                 conn?.Close();
             });
@@ -166,34 +168,66 @@ namespace RestifD
             }
             return r + fmt[4];
         }
+        /// <summary>
+        /// This method allows for transactional operation: 
+        /// the data is generally a sequence of SQL statements,
+        /// to be performed in a transaction.
+        /// We also allow queries: in which case the result sets (Json arrays) are simply concatenated.
+        /// The current implementation assumes everyone agrees to use SQL as in ISO 9075:2016 ;)
+        /// </summary>
+        /// <param name="data"></param>
+        /// <returns></returns>
         string Post1(string data)
         {
             var tr = conn.BeginTransaction(System.Data.IsolationLevel.Serializable);
+            var ret = "";
             foreach (var s in data.Split(';'))
             {
                 var cmd = conn.CreateCommand();
                 cmd.Transaction = tr;
-                cmd.CommandText = s.Trim();
-                if (cmd.CommandText == "")
+                var cm = s.Trim();
+                if (cm == "")
                     continue;
-                cmd.ExecuteNonQuery();
+                cmd.CommandText = cm;
+                cm = cm.ToUpper();
+                Console.WriteLine(cm);
+                if (cm.StartsWith("SELECT") || cm.StartsWith("TABLE"))
+                {
+                    var rdr = cmd.ExecuteReader();
+                    var docar = new DocArray();
+                    while (rdr.Read())
+                    {
+                        var doc = new Document();
+                        for (var i = 0; i < rdr.VisibleFieldCount; i++)
+                            doc.fields.Add(new KeyValuePair<string, object>(rdr.GetName(i), rdr.GetValue(i)));
+                        docar.items.Add(doc);
+                    }
+                    rdr.Close();
+                    ret += docar.ToString();
+                }
+                else
+                    cmd.ExecuteNonQuery();
             }
             tr.Commit();
-            return "OK";
+            if (ret == "")
+                ret = "OK";
+            return ret;
         }
-        string Post2(string tb,Document d)
+        string Post2(string tb,DocArray d)
         {
-            var cls = "insert into " + tb + "(";
-            var vls = ") values (";
+            var cls = new StringBuilder("insert into " + tb + "(");
+            var vls = new StringBuilder(") values ");
             var cm = "";
-            foreach (var e in d.fields)
+            foreach (Document e in d.items)
             {
-                cls += cm + e.Key;
-                vls += cm + Format(e.Value);
+                vls.Append(cm);
+                vls.Append("(");
+                Document.Format(e, (cm == "") ? cls : null, vls);
+                vls.Append(")");
                 cm = ",";
             }
             var cmd = conn.CreateCommand();
-            cmd.CommandText = cls + vls + ")";
+            cmd.CommandText = cls.ToString() + vls.ToString();
             cmd.ExecuteNonQuery();
             return "OK";
         }
@@ -224,12 +258,21 @@ namespace RestifD
             if (ob is DBNull)
                 return "null";
             if (ob is DateTime)
-            {
-                var dt = (DateTime)ob;
-                return dt.ToString("yyyy-MM-dd'T'HH:mm'Z'"); // ISO8601
-            }
+                return ((DateTime)ob).ToString("yyyy-MM-dd'T'HH:mm'Z'"); // ISO8601
             if (ob is string)
                 return "'" + ob.ToString().Replace("'","''") + "'";
+            if (ob is Document)
+            {
+                var sb = new StringBuilder();
+                var cm = "";
+                var d = (Document)ob;
+                foreach(var x in d.fields)
+                {
+                    sb.Append(cm); cm = ",";
+                    Document.Field(x, sb);
+                }
+                return sb.ToString();
+            }
             return ob.ToString();
         }
         string Format1(object ob)
@@ -237,10 +280,7 @@ namespace RestifD
             if (ob is DBNull)
                 return "null";
             if (ob is DateTime)
-            {
-                var dt = (DateTime)ob;
-                return dt.ToString("yyyy-MM-dd'T'HH:mm'Z'"); // ISO8601
-            }
+                return ((DateTime)ob).ToString("yyyy-MM-dd'T'HH:mm'Z'"); // ISO8601
             return ob.ToString();
         }
         string Receive()
@@ -278,6 +318,8 @@ namespace RestifD
             c.AddHeader("Cache-control", "no-store");
             c.AddHeader("Expires", "-1");
             c.AddHeader("Pragma", "no-cache");
+            if (mess != null && mess.Length > 0 && mess[0] == '[')
+                c.AddHeader("Content-Type", "application/json");
             c.ContentLength64 = b.Length;
             var st = c.OutputStream;
             st.Write(b, 0, b.Length);
