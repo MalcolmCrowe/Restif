@@ -117,6 +117,7 @@ namespace RestifD
                 sb.Append("null");
             else if (v is string)
             {
+                v = ((string)v).Replace("'", "''");
                 sb.Append('\'');
                 sb.Append(v);
                 sb.Append('\'');
