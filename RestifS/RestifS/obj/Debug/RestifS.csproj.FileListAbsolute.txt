@@ -1,0 +1,7 @@
+C:\restif\RestifS\RestifS\bin\Debug\RestifS.exe.config
+C:\restif\RestifS\RestifS\bin\Debug\RestifS.exe
+C:\restif\RestifS\RestifS\bin\Debug\RestifS.pdb
+C:\restif\RestifS\RestifS\obj\Debug\RestifS.csprojResolveAssemblyReference.cache
+C:\restif\RestifS\RestifS\obj\Debug\RestifS.csproj.CoreCompileInputs.cache
+C:\restif\RestifS\RestifS\obj\Debug\RestifS.exe
+C:\restif\RestifS\RestifS\obj\Debug\RestifS.pdb
