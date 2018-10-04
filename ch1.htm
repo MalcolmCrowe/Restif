@@ -15,7 +15,7 @@
             };
             xhttp.open("GET", "http://localhost:8088/payroll/holiday/empid=" + empidTXT.value)
             xhttp.setRequestHeader("Accept", "text/html");
-            xhttp.send()
+            xhttp.send();
             holidaysDIV.innerHTML = list; 
         }
     </script>
